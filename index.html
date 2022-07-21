@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNAKE</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="	https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css">
+    <script src="hurdle.class.js"></script>
+    <script src="winscreen.class.js"></script>
+</head>
+
+<!-- the body of the site in html  -->
+
+<body>
+    <div class="d-flex  mobile-column">
+        <div class="">
+            <canvas class="" id="canvas" width="720" height="480"></canvas>
+        </div>
+        <div class="ml-16 mt-16">
+            <br>
+            <button class="btn btn-outline-success" onclick="init()">New Game</button>
+            <button class="btn btn-outline-success" onclick="canvas.requestFullscreen()">Full screen</button>
+            <button class="btn btn-outline-success" onclick="canvas.requestFullscreen(), init()">New game with Full
+                screen</button>
+            <div id="display" class=""></div>
+        </div>
+    </div>
+</body>
+<!-- ------------------------------------------------- -->
+<!-- ------------------------------------------------- --->
+<!---------------------------------------------------  --->
+<!-- ------------------------------------------------- --->
+<!--  ---------------------------------------------------->
+<!-- after this is the script in js -->
+<script>
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext("2d");
+    let level = 1;
+    let goal = 10;
+    let speed;
+    let rows;
+    let cols;
+    let snake = [
+        { x: 0, y: 0 }
+    ];
+    let hurdle = new Hurdle();
+    let winscreen = new Winscreen();
+    let food = {};
+    let cellWidth;
+    let cellHeight;
+    let direction = 'RIGHT';
+    let win = false;
+    let forbiddenDirection = "";
+    let failSound = new Audio('error.mp3');
+
+    let interval = setInterval(console.log("interval initialized"), 1000);
+
+    placeFood();
+    draw();
+    document.addEventListener('keydown', keyDown);
+
+    function init() {
+        window.clearInterval(interval);
+        level = 1;
+        resetGame();
+        win = false;
+    }
+
+    function draw() {
+        updateInfoDisplay();
+        paint("#1fbd00");
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+        if (!win) {
+            paint("red");
+            add(food.x, food.y);
+
+            paint("green");
+            snake.forEach(e => {
+                add(e.x, e.y);
+            });
+
+            paint("gray");
+            hurdle[level].forEach(h => {
+                add(h.x, h.y);
+            });
+        }
+
+        paint("darkgreen");
+
+        if (win) {
+            winscreen[1].forEach(h => {
+                add(h.x, h.y);
+            });
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    function gameLoop() {
+        if (win) {
+            return;
+        }
+        if (snakeIsColliding()) {
+            error();
+        }
+
+        if (snakeIsEating()) {
+            foodCollected = true;
+            eat();
+        }
+
+        shiftSnake();
+
+
+
+        if (goalReached()) {
+            raiseLevel();
+        }
+
+        changeDirection();
+    }
+
+    function goalReached() {
+        return snake.length == goal;
+    }
+
+    function raiseLevel() {
+        if (level < 10) {
+            level++;
+            resetGame();
+        } else {
+            youWin();
+        }
+    }
+
+    function youWin() {
+        direction = "";
+        level = 1;
+        win = true;
+        setWinscreen(30);
+    }
+
+    function setWinscreen(x) {
+        window.clearInterval(interval);
+        rows = x;
+        cols = Math.round(rows * 1.5);
+        cellWidth = canvas.width / cols;
+        cellHeight = canvas.height / rows
+    }
+
+    function updateLevel() {
+
+        /*
+        Level 1
+        */
+        if (level == 1) {
+            setLevel(10, 350);
+        }
+        /*
+        Level 2
+        */
+        if (level == 2) {
+            setLevel(10, 300);
+        }
+        /*
+        Level 3
+        */
+        if (level == 3) {
+            setLevel(14, 270);
+        }
+        /*
+        Level 4
+        */
+        if (level == 4) {
+            setLevel(14, 240);
+        }
+        /*
+        Level 5
+        */
+        if (level == 5) {
+            setLevel(14, 200);
+        }
+        /*
+        Level 6
+        */
+        if (level == 6) {
+            setLevel(14, 190);
+        }
+        /*
+        Level 7
+        */
+        if (level == 7) {
+            setLevel(14, 180);
+        }
+        /*
+        Level 8
+        */
+        if (level == 8) {
+            setLevel(14, 175);
+        }
+        /*
+        Level 9
+        */
+        if (level == 9) {
+            setLevel(14, 170);
+        }
+        /*
+        Level 10
+        */
+        if (level == 10) {
+            setLevel(20, 150);
+        }
+    }
+
+    function setLevel(rws, spd) {
+        rows = rws;
+        cols = Math.round(rows * 1.5);
+        cellWidth = canvas.width / cols;
+        cellHeight = canvas.height / rows
+        speed = spd;
+
+        placeFood();
+
+        window.clearInterval(interval);
+        interval = setInterval(() => {
+            gameLoop();
+        }, speed);
+    }
+
+    function updateInfoDisplay() {
+        let progress = (level - 1) / 10 * 100;
+        if (!win) {
+            document.getElementById("display").innerHTML = `
+        Length : ${snake.length} <br> <br>
+        Your level: ${level} <br> <br>
+        Game progress: ${progress} %<br><br>
+        Reach a length of ${goal} for next level <br>
+        Solve level 10 for win the game and restart <br>
+        good luck <br>
+        `
+        } else {
+            document.getElementById("display").innerHTML = `
+       you solve the last level <br><br>
+       klick on <i>new game<i> for restart
+        `
+        }
+    }
+
+    function shiftSnake() {
+
+        for (let i = snake.length - 1; i > 0; i--) {
+            const element = snake[i];
+            const lastElement = snake[i - 1];
+
+            element.x = lastElement.x;
+            element.y = lastElement.y;
+        }
+
+    }
+
+    function changeDirection() {
+        if (direction == "LEFT") {
+            snake[0].x--;
+            forbiddenDirection = "RIGHT";
+        };
+        if (direction == "RIGHT") {
+            snake[0].x++;
+            forbiddenDirection = "LEFT";
+        };
+        if (direction == "UP") {
+            snake[0].y--;
+            forbiddenDirection = "DOWN";
+        };
+        if (direction == "DOWN") {
+            snake[0].y++;
+            forbiddenDirection = "UP";
+        }
+    }
+
+    function eat() {
+        snake = [{
+            x: snake[0].x,
+            y: snake[0].y
+        }, ...snake];
+
+        placeFood();
+    }
+
+    function error() {
+        //  failSound.play();
+        level = 1;
+        resetGame();
+    }
+
+    function resetGame() {
+        snake = [
+            { x: 0, y: 0 }
+        ];
+        direction = "RIGHT";
+        updateLevel();
+    }
+
+    function snakeIsColliding() {
+        if (snake[0].x < 0) {
+            return true;
+        }
+
+        if (snake[0].x > (cols - 1)) {
+            return true;
+        }
+
+        if (snake[0].y < 0) {
+            return true;
+        }
+
+        if (snake[0].y > (rows - 1)) {
+            return true;
+        }
+        if (hitHurdle()) {
+            return true;
+        }
+        if (bitesItself()) {
+            return true;
+        }
+        return false;
+    }
+
+    function hitHurdle() {
+        let firstElement = snake[0];
+        let hurdles = hurdle[level];
+
+        if (hurdles.find(hurdle => hurdle.x == firstElement.x && hurdle.y == firstElement.y)) {
+            return true;
+        }
+    }
+
+    function foodIsOnHurdle() {
+        let hurdles = hurdle[level];
+        if (hurdles.find(hurdle => hurdle.x == food.x && hurdle.y == food.y)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function foodIsOnSnake() {
+        if (snake.find(element => element.x == food.x && element.y && food.y)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function bitesItself() {
+        let = firstElement = snake[0];
+        let = otherElements = snake.slice(1);
+
+
+        // snake bites in a part of himself
+        if (otherElements.find(element => element.x == firstElement.x && element.y == firstElement.y)) {
+            return true;
+        }
+
+        //180 degree turn an bites in back
+        if (snake.length > 1 && direction == forbiddenDirection) {
+            return true;
+        }
+    }
+
+    function snakeIsEating() {
+        if (snake[0].x == food.x && snake[0].y == food.y) {
+            return true;
+        }
+        return false;
+    }
+
+    function paint(color) {
+        ctx.fillStyle = color;
+    }
+
+    function add(x, y) {
+        ctx.fillRect(x * cellWidth + 1, y * cellHeight + 1, cellWidth - 2, cellHeight - 2);
+    }
+
+    function keyDown(e) {
+        if (e.keyCode == 37) {
+            direction = "LEFT";
+        };
+
+        if (e.keyCode == 38) {
+            direction = "UP";
+        };
+
+        if (e.keyCode == 39) {
+            direction = "RIGHT";
+        };
+
+        if (e.keyCode == 40) {
+            direction = "DOWN";
+        };
+    }
+
+    function placeFood() {
+        food.x = Math.round(Math.random() * (cols - 1));
+        food.y = Math.round(Math.random() * (rows - 1));
+        if (foodIsOnHurdle() || foodIsOnSnake()) {
+            placeFood();
+        }
+    };
+
+
+
+
+
+    //////////swipe and touch control for mobile gaming
+
+    document.addEventListener('touchstart', handleTouchStart, false);
+    document.addEventListener('touchmove', handleTouchMove, false);
+
+    var xDown = null;
+    var yDown = null;
+
+    function getTouches(evt) {
+        return evt.touches ||             // browser API
+            evt.originalEvent.touches; // jQuery
+    }
+
+    function handleTouchStart(evt) {
+        const firstTouch = getTouches(evt)[0];
+        xDown = firstTouch.clientX;
+        yDown = firstTouch.clientY;
+    };
+
+    function handleTouchMove(evt) {
+        if (!xDown || !yDown) {
+            return;
+        }
+
+        var xUp = evt.touches[0].clientX;
+        var yUp = evt.touches[0].clientY;
+
+        var xDiff = xDown - xUp;
+        var yDiff = yDown - yUp;
+
+        if (Math.abs(xDiff) > Math.abs(yDiff)) {/*most significant*/
+            if (xDiff > 0) {
+                direction = "LEFT";
+            } else {
+                direction = "RIGHT";
+            }
+        } else {
+            if (yDiff > 0) {
+                direction = "UP";
+            } else {
+                direction = "DOWN";
+            }
+        }
+        /* reset values */
+        xDown = null;
+        yDown = null;
+    }; 
+</script>
+
+</html>

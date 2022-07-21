@@ -1,0 +1,33 @@
+body {
+    color: white !important;
+    background-color: black !important;
+    overscroll-behavior: contain;
+}
+
+
+.mb-16 {
+    margin-bottom: 16px !important;
+}
+
+.mt-16 {
+    margin-top: 16px !important;
+}
+
+.mr-16 {
+    margin-right: 16px !important;
+}
+
+.ml-16 {
+    margin-left: 16px !important;
+}
+
+@media only screen and (max-width: 600px) {
+    .mobile-column {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    canvas {
+        width: 100vw !important;
+    }
+}
